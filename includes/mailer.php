@@ -1,6 +1,5 @@
 <?php
 function send_verification_code_to_email($email, $verification_code) {
-
     require '../PHPMailer/PHPMailerAutoload.php';
 
     $mail = new PHPMailer;
@@ -17,9 +16,9 @@ function send_verification_code_to_email($email, $verification_code) {
     $mail->setFrom('zakaria15-5729@diu.edu.bd', 'Supervisor Sulution');
     $mail->addAddress($email);     // Add a recipient
     
-    $mail->addAttachment('/var/tmp/file.tar.gz');         // Add attachments
-    $mail->addAttachment('/tmp/image.jpg', 'new.jpg');    // Optional name
-    $mail->isHTML(true);                                  // Set email format to HTML
+    //$mail->addAttachment('/var/tmp/file.tar.gz');         // Add attachments
+    //$mail->addAttachment('/tmp/image.jpg', 'new.jpg');    // Optional name
+    //$mail->isHTML(true);                                  // Set email format to HTML
 
     $mail->Subject = 'Verification code: ';
     $mail->Body    = 'Thank your for joining with us. Your verification code: '.$verification_code;
