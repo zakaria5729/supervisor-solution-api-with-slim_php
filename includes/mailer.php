@@ -20,9 +20,9 @@ function send_verification_code_to_email($email, $verification_code) {
     //$mail->addAttachment('/tmp/image.jpg', 'new.jpg');    // Optional name
     //$mail->isHTML(true);                                  // Set email format to HTML
 
-    $mail->Subject = 'Verification code: ';
-    $mail->Body    = 'Thank your for joining with us. Your verification code: '.$verification_code;
-    $mail->AltBody = 'This is the body in plain text for non-HTML mail clients';
+    $mail->Subject = "Supervisor solution's verification code";
+    $mail->Body    = 'Welcome for joining to Supervisor solution. Your verification code: '.$verification_code;
+    $mail->AltBody = 'Welcome for joining to Supervisor solution.';
 
     if(!$mail->send()) {
         //echo 'Message could not be sent.';

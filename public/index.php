@@ -22,19 +22,20 @@ $app = new \Slim\App([
 
  //Create user
  $app->post('/create', function(Request $request, Response $response) {     
-        if(!haveEmptyParameters($request, $response, array('email', 'password'))) {
+        if(!haveEmptyParameters($request, $response, array('name', 'email', 'password'))) {
          $request_data = $request->getParams();
 
+         $name = $request_data['name'];
          $email = $request_data['email'];
          $password = $request_data['password'];
+         $user_role = "Student";
          $verification_code = random_int(100000, 999999); //generate 6 digit randomly
-         $status = 0;
 
          $hash_password = password_hash($password, PASSWORD_DEFAULT);
          $message = array();
 
          $db = new DbOperations();
-         $result = $db->createAccount($email, $hash_password, $verification_code, $status);   
+         $result = $db->createAccount($name, $email, $hash_password, $user_role, $verification_code);   
 
          if($result == USER_CREATED) {
             $message['error'] = false;
@@ -68,16 +69,25 @@ $app = new \Slim\App([
  });
 
  //User login
- $app->post('/login', function(Request $request, Response $response){
-     if(!haveEmptyParameters($request, $response, array('email', 'password'))) {
+ $app->post('/login_or_signin', function(Request $request, Response $response) {
+     if(!haveEmptyParameters($request, $response, array('name', 'email', 'password', 'token', 'user_role', 'login_type'))) {
         $request_data = $request->getParams();
         
+        $name = $request_data['name'];
         $email = $request_data['email'];
         $password = $request_data['password'];
+        $token = $request_data['token'];
+        $user_role = $request_data['user_role'];
+        $login_type = $request_data['login_type'];
         
         $db = new DbOperations();
-        $result = $db->userLogin($email, $password);
         $response_data = array();
+
+        if($login_type == "login_email") {
+            $result = $db->userLoginWtihPassword($email, $password, $user_role);
+        } else if($login_type == "google_sign_in") {
+            $result = $db->userSignInWithGoogle($name, $email, $token, $user_role);
+        }
 
         if($result == USER_AUTHENTICATED) {
             $user = $db->getUserByEmial($email);
@@ -97,6 +107,14 @@ $app = new \Slim\App([
         } else if($result == PASSWORD_DO_NOT_MATCH) {
             $response_data['error'] = true;
             $response_data['message'] = 'Invalid email or password';
+
+        } else if($result == USER_FAILURE) {
+            $response_data['error'] = true;
+            $response_data['message'] = 'User sign in failed. Try again later';
+
+        } else if($result == TOKEN_DO_NOT_MATCH) {
+            $response_data['error'] = true;
+            $response_data['message'] = 'Invalid email or token';
         }
 
         $response->write(json_encode($response_data));
@@ -111,7 +129,7 @@ $app = new \Slim\App([
  });
 
  //Email verification
- $app->post('/verification', function(Request $request, Response $response){
+ $app->post('/verification', function(Request $request, Response $response) {
      if(!haveEmptyParameters($request, $response, array('email', 'verification_code'))) {
          $request_data = $request->getParams();
 
@@ -124,7 +142,7 @@ $app = new \Slim\App([
 
          if($result == STATUS_UPDATED) {
              $response_data['error'] = false;
-             $response_data['message'] = 'Status updated';
+             $response_data['message'] = 'Successfully verified and status updated';
 
          } else if($result == STATUS_ALREADY_UPDATED) {
             $response_data['error'] = false;
@@ -161,7 +179,7 @@ $app = new \Slim\App([
 
         $message = array();
         $db = new DbOperations();        
-        $result = $db->forgot_password($email, $verification_code);
+        $result = $db->forgotPassword($email, $verification_code);
 
         if($result == VERIFICATION_CODE_UPDATED) {
             $message['error'] = false;
@@ -195,16 +213,16 @@ $app = new \Slim\App([
 });
 
  //Update user data
-$app->put('/update_user', function(Request $request, Response $response){
-    if(!haveEmptyParameters($request, $response, array('id', 'email'))) {
+$app->put('/update_user', function(Request $request, Response $response) {
+    if(!haveEmptyParameters($request, $response, array('name', 'email'))) {
         $request_data = $request->getParams();
-        $id = $request_data['id'];
+        $name = $request_data['name'];
         $email = $request_data['email'];
 
         $db = new DbOperations();
         $response_data = array();
 
-        if($db->updateUser($id, $email)) {
+        if($db->updateUser($name, $email)) {
             $response_data['error'] = false;
             $response_data['message'] = 'User updated successfully';
 
@@ -228,7 +246,7 @@ $app->put('/update_user', function(Request $request, Response $response){
 });
 
  //Update password
-$app->put('/update_password', function(Request $request, Response $response){
+$app->put('/update_password', function(Request $request, Response $response) {
     if(!haveEmptyParameters($request, $response, array('email', 'current_password', 'new_password'))) {
         $request_data = $request->getParams();
         $email = $request_data['email'];
@@ -249,7 +267,7 @@ $app->put('/update_password', function(Request $request, Response $response){
 
         } else if($result == PASSWORD_DO_NOT_MATCH) {
             $response_data['error'] = true;
-            $response_data['message'] = 'Your given password is invalid';
+            $response_data['message'] = 'Invalid current password';
         }
 
         $response->write(json_encode($response_data));
@@ -264,14 +282,16 @@ $app->put('/update_password', function(Request $request, Response $response){
 });
 
  //Reset password
- $app->put('/reset_password', function(Request $request, Response $response){
-    if(!haveEmptyParameters($request, $response, array('email', 'new_password'))) {
+ $app->put('/reset_password', function(Request $request, Response $response) {
+    if(!haveEmptyParameters($request, $response, array('email', 'verification_code', 'new_password'))) {
         $request_data = $request->getParams();
         $email = $request_data['email'];
+        $verification_code = $request_data['verification_code'];
         $new_password = $request_data['new_password'];
+        $password_status = 1;
 
         $db = new DbOperations();
-        $result = $db->resetPassword($email, $new_password);
+        $result = $db->resetPassword($email, $verification_code, $new_password, $password_status);
         $response_data = array();
 
         if($result == PASSWORD_RESET) {
@@ -281,6 +301,9 @@ $app->put('/update_password', function(Request $request, Response $response){
         } else if($result == PASSWORD_NOT_RESET) {
             $response_data['error'] = true;
             $response_data['message'] = 'Password not reset. Try again later';
+        } else if($result == VERIFICATION_CODE_WRONG) {
+            $response_data['error'] = true;
+            $response_data['message'] = 'Wrong verification code. Try again';
         }
 
         $response->write(json_encode($response_data));
@@ -348,11 +371,11 @@ $app->get('/topics', function(Request $request, Response $response) {
  //Get all supervisors
 $app->get('/supervisors', function(Request $request, Response $response) {
     $db = new DbOperations();
-    $topics = $db->getSupervisors();
+    $supervisors = $db->getSupervisors();
 
     $response_data = array();
     $response_data['error'] = false;
-    $response_data['topics'] = $topics;
+    $response_data['supervisors'] = $supervisors;
 
     $response->write(json_encode($response_data, JSON_PRETTY_PRINT));
     return $response
