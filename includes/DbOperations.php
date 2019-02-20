@@ -2,20 +2,21 @@
 
 class DbOperations {
     private $conn;
+    private $table_users = "our_supervisor.users";
     private $table_students = "our_supervisor.students";
-    private $table_topics = "our_supervisor.topics";
-    private $table_supervisors = "our_supervisor.supervisors";
+    private $table_topic_list = "our_supervisor.topic_list";
+    private $table_supervisor_list = "our_supervisor.supervisor_list";
+    private $table_titlle_defense = "our_supervisor.titlle_defense";
 
     function __construct() {
         require_once dirname(__FILE__) . '/DbConnection.php';
-
         $db = new DbConnection();
         $this->conn = $db->connect();
     }
 
     public function createAccount($name, $email, $password, $user_role, $verification_code) {
         if(!$this->isEmailExistsWtihUserRole($email, $user_role)) {
-            $statement = $this->conn->prepare("INSERT INTO ".$this->table_students."(name, email, password, user_role, verification_code) VALUES(?, ?, ?, ?, ?)");
+            $statement = $this->conn->prepare("INSERT INTO ".$this->table_users."(name, email, password, user_role, verification_code) VALUES(?, ?, ?, ?, ?)");
             $statement->bind_param("ssssi", $name, $email, $password, $user_role, $verification_code);
 
             if($statement->execute()) {
@@ -50,6 +51,45 @@ class DbOperations {
         }
     }
 
+    public function titleDefenseRegistration($project_internship, $project_internship_type, $project_internship_title, $area_of_interest, $day_evening, $user_list, $supervisor_list) {
+        $users = json_decode($user_list);
+        print_r($users);
+
+
+
+
+
+        // if(!$this->isGroupExistsWithEmail($email)) {
+        //     $group_id = $user_list[0];
+
+        //     $statement = $this->conn->prepare("INSERT INTO ".$this->table_titlle_defense."(group_id, supervisor_id, project_internship, project_internship_type, project_internship_title, area_of_interest, day_evening) VALUES(?, ?, ?, ?, ?, ?, ?)");
+        //     $statement->bind_param("iisssss", $group_id, $supervisor_id, $project_internship, $project_internship_type, $project_internship_title, $area_of_interest, $day_evening);
+
+        //     if($statement->execute()) {
+
+        //     } else {
+
+        //     }
+        // }
+    }
+
+    private function isGroupExistsWithEmail($email) {
+        $statement = $this->conn->prepare("SELECT id FROM ".$this->table_students." WHERE email = ?");
+        $statement->bind_param("s", $email);
+        $statement->execute();
+        $statement->store_result();
+
+        $num_of_rows = $statement->num_rows;
+        $statement->free_result();
+        $statement->close();
+
+        if($num_of_rows > 0) {
+            return true;
+        } else {
+            return false;
+        }
+    }
+
     public function userSignInWithGoogle($name, $email, $token, $user_role) {
         if($this->isEmailExistsWtihUserRole($email, $user_role)) {
 
@@ -67,7 +107,7 @@ class DbOperations {
                 $token_status = 1;
                 $password_status = 1;
 
-                $statement = $this->conn->prepare("UPDATE ".$this->table_students." SET token = ?, token_status = ?, password_status = ? WHERE email = ?");
+                $statement = $this->conn->prepare("UPDATE ".$this->table_users." SET token = ?, token_status = ?, password_status = ? WHERE email = ?");
                 $statement->bind_param("siis", $hash_token, $token_status, $password_status, $email);
                 
                 if($statement->execute()) {
@@ -81,7 +121,7 @@ class DbOperations {
             $token_status = 1;
             $password_status = 1;
 
-            $statement = $this->conn->prepare("INSERT INTO ".$this->table_students."(name, email, user_role, password_status, token, token_status) VALUES(?, ?, ?, ?, ?, ?)");
+            $statement = $this->conn->prepare("INSERT INTO ".$this->table_users."(name, email, user_role, password_status, token, token_status) VALUES(?, ?, ?, ?, ?, ?)");
             $statement->bind_param("sssisi", $name, $email, $user_role, $password_status, $hash_token, $token_status);
 
             if($statement->execute()) {
@@ -92,24 +132,9 @@ class DbOperations {
         }
     }
 
-    private function isTokenStatusUpadated($email) {
-        $statement = $this->conn->prepare("SELECT token_status FROM ".$this->table_students." WHERE email = ?");
-        $statement->bind_param("s", $email);
-        $statement->execute();
-        $statement->bind_result($token_status);
-        $statement->fetch();
-        $statement->close();
-
-        if($token_status == 1) {
-            return true;
-        } else {
-            return false;
-        }
-    }
-
     public function updateUser($name, $email) {
         if($this->isEmailExists($email)) {
-            $statement = $this->conn->prepare("UPDATE ".$this->table_students." SET name = ? WHERE email = ?");
+            $statement = $this->conn->prepare("UPDATE ".$this->table_users." SET name = ? WHERE email = ?");
             $statement->bind_param("ss", $name, $email);
             
             if($statement->execute()) {
@@ -128,7 +153,7 @@ class DbOperations {
         if(password_verify($current_password, $hashed_password)) {
             $new_hashed_password = password_hash($new_password, PASSWORD_DEFAULT);
 
-            $statement = $this->conn->prepare("UPDATE ".$this->table_students." SET password = ? WHERE email = ?");
+            $statement = $this->conn->prepare("UPDATE ".$this->table_users." SET password = ? WHERE email = ?");
             $statement->bind_param("ss", $new_hashed_password, $email);
 
             if($statement->execute()) {
@@ -160,7 +185,7 @@ class DbOperations {
     public function forgotPassword($email, $verification_code) {
         if($this->isEmailExists($email)) {
             if(send_verification_code_to_email($email, $verification_code)) {
-                $statement = $this->conn->prepare("UPDATE ".$this->table_students." SET verification_code = ? WHERE email = ?");
+                $statement = $this->conn->prepare("UPDATE ".$this->table_users." SET verification_code = ? WHERE email = ?");
                 $statement->bind_param("is", $verification_code, $email);
 
                 if($statement->execute()) {
@@ -180,7 +205,7 @@ class DbOperations {
         if($this->checkVerificationCode($email, $verification_code)) {
             $new_hashed_password = password_hash($new_password, PASSWORD_DEFAULT);
 
-            $statement = $this->conn->prepare("UPDATE ".$this->table_students." SET password = ?, password_status = ? WHERE email = ?");
+            $statement = $this->conn->prepare("UPDATE ".$this->table_users." SET password = ?, password_status = ? WHERE email = ?");
             $statement->bind_param("sis", $new_hashed_password, $password_status, $email);
 
             if($statement->execute()) {
@@ -195,7 +220,7 @@ class DbOperations {
 
     public function deleteUser($id) {
         if($this->isUserExists($id)) {
-            $statement = $this->conn->prepare("DELETE FROM ".$this->table_students." WHERE id = ?");
+            $statement = $this->conn->prepare("DELETE FROM ".$this->table_users." WHERE id = ?");
             $statement->bind_param("i", $id);
 
             if($statement->execute()) {
@@ -209,7 +234,7 @@ class DbOperations {
     }
 
     public function getAllUser() {
-        $statement = $this->conn->prepare("SELECT id, name, email, created_at FROM ".$this->table_students." ORDER BY created_at DESC");
+        $statement = $this->conn->prepare("SELECT id, name, email, created_at FROM ".$this->table_users." ORDER BY created_at DESC");
         $statement->execute();
         $statement->bind_result($id, $name, $email, $created_at);
         $all_user = array();
@@ -228,8 +253,8 @@ class DbOperations {
         return $all_user;
     }
 
-    public function getTopics() {
-        $statement = $this->conn->prepare("SELECT id, topic_name, image_path, supervisor_initial, description_one, description_two, video_path FROM ".$this->table_topics." ORDER BY id DESC");
+    public function getTopicList() {
+        $statement = $this->conn->prepare("SELECT id, topic_name, image_path, supervisor_initial, description_one, description_two, video_path FROM ".$this->table_topic_list." ORDER BY id DESC");
         $statement->execute();
         $statement->bind_result($id, $topic_name, $image_path, $supervisor_initial, $description_one, $description_two, $video_path);
         
@@ -251,8 +276,8 @@ class DbOperations {
         return $all_topic;
     }
 
-    public function getSupervisors() {
-        $statement = $this->conn->prepare("SELECT id, supervisor_name, supervisor_initial, designation, supervisor_image, phone, email, research_area, training_experience, membership, publication_project, profile_link FROM ".$this->table_supervisors);
+    public function getSupervisorList() {
+        $statement = $this->conn->prepare("SELECT id, supervisor_name, supervisor_initial, designation, supervisor_image, phone, email, research_area, training_experience, membership, publication_project, profile_link FROM ".$this->table_supervisor_list);
         $statement->execute();
         $statement->bind_result($id, $supervisor_name, $supervisor_initial, $designation, $supervisor_image, $phone, $email, $research_area, $training_experience, $membership, $publication_project, $profile_link);
         
@@ -280,7 +305,7 @@ class DbOperations {
     }
 
     public function getUserByEmial($email) {
-        $statement = $this->conn->prepare("SELECT id, name, email, user_role, created_at FROM ".$this->table_students." WHERE email = ?");
+        $statement = $this->conn->prepare("SELECT id, name, email, user_role, created_at FROM ".$this->table_users." WHERE email = ?");
         $statement->bind_param("s", $email);
         $statement->execute();
         $statement->bind_result($id, $name, $email, $user_role, $created_at);
@@ -298,7 +323,7 @@ class DbOperations {
     }
 
     private function updatePasswordStatus($email, $password_status) {
-        $statement = $this->conn->prepare("UPDATE ".$this->table_students." SET password_status = ? WHERE email = ?");
+        $statement = $this->conn->prepare("UPDATE ".$this->table_users." SET password_status = ? WHERE email = ?");
         $statement->bind_param("is", $password_status, $email);
 
         if($statement->execute()) {
@@ -309,7 +334,7 @@ class DbOperations {
     }
 
     private function getPasswordByEmial($email) {
-        $statement = $this->conn->prepare("SELECT password FROM ".$this->table_students." WHERE email = ?");
+        $statement = $this->conn->prepare("SELECT password FROM ".$this->table_users." WHERE email = ?");
         $statement->bind_param("s", $email);
         $statement->execute();
         $statement->bind_result($password);
@@ -320,7 +345,7 @@ class DbOperations {
     }
 
     private function getTokenByEmial($email) {
-        $statement = $this->conn->prepare("SELECT token FROM ".$this->table_students." WHERE email = ?");
+        $statement = $this->conn->prepare("SELECT token FROM ".$this->table_users." WHERE email = ?");
         $statement->bind_param("s", $email);
         $statement->execute();
         $statement->bind_result($token);
@@ -330,8 +355,23 @@ class DbOperations {
         return $token;
     }
 
+    private function isTokenStatusUpadated($email) {
+        $statement = $this->conn->prepare("SELECT token_status FROM ".$this->table_users." WHERE email = ?");
+        $statement->bind_param("s", $email);
+        $statement->execute();
+        $statement->bind_result($token_status);
+        $statement->fetch();
+        $statement->close();
+
+        if($token_status == 1) {
+            return true;
+        } else {
+            return false;
+        }
+    }
+
     private function isEmailExistsWtihUserRole($email, $user_role) {
-        $statement = $this->conn->prepare("SELECT id FROM ".$this->table_students." WHERE email = ? AND user_role = ?");
+        $statement = $this->conn->prepare("SELECT id FROM ".$this->table_users." WHERE email = ? AND user_role = ?");
         $statement->bind_param("ss", $email, $user_role);
         $statement->execute();
         $statement->store_result();
@@ -348,7 +388,7 @@ class DbOperations {
     }
 
     private function isEmailExists($email) {
-        $statement = $this->conn->prepare("SELECT id FROM ".$this->table_students." WHERE email = ?");
+        $statement = $this->conn->prepare("SELECT id FROM ".$this->table_users." WHERE email = ?");
         $statement->bind_param("s", $email);
         $statement->execute();
         $statement->store_result();
@@ -365,7 +405,7 @@ class DbOperations {
     }
 
     private function isUserExists($id) {
-        $statement = $this->conn->prepare("SELECT email FROM ".$this->table_students." WHERE id = ?");
+        $statement = $this->conn->prepare("SELECT email FROM ".$this->table_users." WHERE id = ?");
         $statement->bind_param("i", $id);
         $statement->execute();
         $statement->store_result();
@@ -382,7 +422,7 @@ class DbOperations {
     }
 
     private function isEmailAndVerificationCodeMatch($email, $verification_code) {
-        $statement = $this->conn->prepare("SELECT id FROM ".$this->table_students." WHERE email = ? AND verification_code = ?");
+        $statement = $this->conn->prepare("SELECT id FROM ".$this->table_users." WHERE email = ? AND verification_code = ?");
         $statement->bind_param("si", $email, $verification_code);
         $statement->execute();
         $statement->store_result();
@@ -399,7 +439,7 @@ class DbOperations {
     }
 
     private function isPasswordStatusUpdated($email) {
-        $statement = $this->conn->prepare("SELECT password_status FROM ".$this->table_students." WHERE email = ?");
+        $statement = $this->conn->prepare("SELECT password_status FROM ".$this->table_users." WHERE email = ?");
         $statement->bind_param("s", $email);
         $statement->execute();
         $statement->bind_result($password_status);
@@ -414,7 +454,7 @@ class DbOperations {
     }
 
     private function checkVerificationCode($email, $verification_code) {
-        $statement = $this->conn->prepare("SELECT id FROM ".$this->table_students." WHERE verification_code = ? AND email = ?");
+        $statement = $this->conn->prepare("SELECT id FROM ".$this->table_users." WHERE verification_code = ? AND email = ?");
         $statement->bind_param("is", $verification_code, $email);
         $statement->execute();
         $statement->store_result();

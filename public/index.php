@@ -6,22 +6,16 @@ require '../vendor/autoload.php';
 require '../includes/mailer.php';
 require '../includes/DbOperations.php';
 
-//$app = new \Slim\App();
+$app = new \Slim\App();
 
-$app = new \Slim\App([
-    'settings'=>[
-        'displayErrorDetails'=>true
-    ]
-]);
-
-/**
- * endpoint: create_account
- * parameters: email, password, verification_code, status
- * method: POST
- */
+// $app = new \Slim\App([
+//     'settings'=>[
+//         'displayErrorDetails'=>true
+//     ]
+// ]);
 
  //Create user
- $app->post('/create', function(Request $request, Response $response) {     
+ $app->post('/create_user', function(Request $request, Response $response) {     
         if(!haveEmptyParameters($request, $response, array('name', 'email', 'password'))) {
          $request_data = $request->getParams();
 
@@ -30,6 +24,12 @@ $app = new \Slim\App([
          $password = $request_data['password'];
          $user_role = "Student";
          $verification_code = random_int(100000, 999999); //generate 6 digit randomly
+
+         //Removing HTML from a string and special characters
+		 $name = htmlspecialchars(strip_tags($name));
+		 $email = htmlspecialchars(strip_tags($email));
+		 $password = htmlspecialchars(strip_tags($password));
+		 $user_role = htmlspecialchars(strip_tags($user_role));
 
          $hash_password = password_hash($password, PASSWORD_DEFAULT);
          $message = array();
@@ -68,6 +68,34 @@ $app = new \Slim\App([
                 ->withStatus($response_code);
  });
 
+ $app->post('/title_defense_registration',function(Request $request, Response $response) {
+    // if(!haveEmptyParameters($request, $response, array('project_internship', 'project_internship_type', 'project_internship_title', 'area_of_interest', 'day_evening', 'user_list', 'supervisor_list'))) {
+        $request_data = $request->getParams();
+
+        $project_internship = $request_data['project_internship'];
+        $project_internship_type = $request_data['project_internship_type'];
+        $project_internship_title = $request_data['project_internship_title'];
+        $area_of_interest = $request_data['area_of_interest'];
+        $day_evening = $request_data['day_evening'];
+
+        $user_list = $request_data['user_list'];
+        $supervisor_list = $request_data['supervisor_list'];
+
+        $db = new DbOperations();
+
+        //$db->titleDefenseRegistration($project_internship, $project_internship_type, $project_internship_title, $area_of_interest, $day_evening, $user_list, $supervisor_list);
+        
+        //$message = array();
+
+        $message['msg'] = $user_list[2];
+
+        $response->write(json_encode($message));
+        return $response
+                ->withHeader('Content-type', 'application/json')
+                ->withStatus(200);
+    //}
+});
+
  //User login
  $app->post('/login_or_signin', function(Request $request, Response $response) {
      if(!haveEmptyParameters($request, $response, array('name', 'email', 'password', 'token', 'user_role', 'login_type'))) {
@@ -79,6 +107,11 @@ $app = new \Slim\App([
         $token = $request_data['token'];
         $user_role = $request_data['user_role'];
         $login_type = $request_data['login_type'];
+
+        //Removing HTML from a string and special characters
+		$name = htmlspecialchars(strip_tags($name));
+		$token = htmlspecialchars(strip_tags($token));
+		$login_type = htmlspecialchars(strip_tags($login_type));
         
         $db = new DbOperations();
         $response_data = array();
@@ -135,6 +168,10 @@ $app = new \Slim\App([
 
          $email = $request_data['email'];
          $verification_code = $request_data['verification_code'];
+         
+         //Removing HTML from a string and special characters
+		 $email = htmlspecialchars(strip_tags($email));
+		 $verification_code = htmlspecialchars(strip_tags($verification_code));
 
          $db = new DbOperations();
          $result = $db->emailVerification($email, $verification_code);
@@ -177,6 +214,9 @@ $app = new \Slim\App([
         $email = $request_data['email'];
         $verification_code = random_int(100000, 999999);
 
+        //Removing HTML from a string and special characters
+		$email = htmlspecialchars(strip_tags($email));
+
         $message = array();
         $db = new DbOperations();        
         $result = $db->forgotPassword($email, $verification_code);
@@ -216,8 +256,13 @@ $app = new \Slim\App([
 $app->put('/update_user', function(Request $request, Response $response) {
     if(!haveEmptyParameters($request, $response, array('name', 'email'))) {
         $request_data = $request->getParams();
+
         $name = $request_data['name'];
         $email = $request_data['email'];
+
+        //Removing HTML from a string and special characters
+		$name = htmlspecialchars(strip_tags($name));
+		$email = htmlspecialchars(strip_tags($email));
 
         $db = new DbOperations();
         $response_data = array();
@@ -249,9 +294,15 @@ $app->put('/update_user', function(Request $request, Response $response) {
 $app->put('/update_password', function(Request $request, Response $response) {
     if(!haveEmptyParameters($request, $response, array('email', 'current_password', 'new_password'))) {
         $request_data = $request->getParams();
+
         $email = $request_data['email'];
         $current_password = $request_data['current_password'];
         $new_password = $request_data['new_password'];
+
+        //Removing HTML from a string and special characters
+		$name = htmlspecialchars(strip_tags($name));
+		$current_password = htmlspecialchars(strip_tags($current_password));
+		$new_password = htmlspecialchars(strip_tags($new_password));
 
         $db = new DbOperations();
         $result = $db->updatePassword($email, $current_password, $new_password);
@@ -285,10 +336,16 @@ $app->put('/update_password', function(Request $request, Response $response) {
  $app->put('/reset_password', function(Request $request, Response $response) {
     if(!haveEmptyParameters($request, $response, array('email', 'verification_code', 'new_password'))) {
         $request_data = $request->getParams();
+
         $email = $request_data['email'];
         $verification_code = $request_data['verification_code'];
         $new_password = $request_data['new_password'];
         $password_status = 1;
+
+        //Removing HTML from a string and special characters
+		$email = htmlspecialchars(strip_tags($email));
+		$verification_code = htmlspecialchars(strip_tags($verification_code));
+		$new_password = htmlspecialchars(strip_tags($new_password));
 
         $db = new DbOperations();
         $result = $db->resetPassword($email, $verification_code, $new_password, $password_status);
@@ -324,6 +381,9 @@ $app->delete('/delete/{id}', function(Request $request, Response $response, arra
     $id = $args['id'];
     $response_data = array();
 
+    //Removing HTML from a string and special characters
+	$id = htmlspecialchars(strip_tags($id));
+
     if($db->deleteUser($id)) {
         $response_data['error'] = false;
         $response_data['message'] = 'Student has been deleted';
@@ -339,7 +399,7 @@ $app->delete('/delete/{id}', function(Request $request, Response $response, arra
 });
 
  //Get all users data
-$app->get('/students', function(Request $request, Response $response) {
+$app->get('/users', function(Request $request, Response $response) {
     $db = new DbOperations();
     $users = $db->getAllUser();
 
@@ -354,9 +414,9 @@ $app->get('/students', function(Request $request, Response $response) {
 });
 
  //Get all topics
-$app->get('/topics', function(Request $request, Response $response) {
+$app->get('/topic_list', function(Request $request, Response $response) {
     $db = new DbOperations();
-    $topics = $db->getTopics();
+    $topics = $db->getTopicList();
 
     $response_data = array();
     $response_data['error'] = false;
@@ -369,9 +429,9 @@ $app->get('/topics', function(Request $request, Response $response) {
 });
 
  //Get all supervisors
-$app->get('/supervisors', function(Request $request, Response $response) {
+$app->get('/supervisor_list', function(Request $request, Response $response) {
     $db = new DbOperations();
-    $supervisors = $db->getSupervisors();
+    $supervisors = $db->getSupervisorList();
 
     $response_data = array();
     $response_data['error'] = false;
@@ -407,5 +467,28 @@ function haveEmptyParameters($request, $response, $required_params) {
  }
 
 $app->run();
+
+
+$json = '{
+    "project_internship": "donut",
+    "project_internship_type": "Cake",
+    "project_internship_title": "Cake",
+    "area_of_interest": "Cake",
+    "day_evening": "Cake",
+    "user_list": [
+        { "student_id": "5729", "name": "zakaria", "email": "zakaria@gmail.com", "phone": "01564564" },
+        { "student_id": "6103", "name": "mmm", "email": "mma@gmail.com", "phone": "88864564" },
+        { "student_id": "4852", "name": "sss", "email": "sssria@gmail.com", "phone": "999999" }
+    ], 
+    "supervisor_list": [
+    	{"supervisor_initial": "SAD" },
+    	{"supervisor_initial": "MAD" }, 
+    	{"supervisor_initial": "CAD" }
+    ]
+}';
+
+$yummy = json_decode($json);
+
+echo $yummy->user_list[2]->student_id; //5004
 
 ?>
