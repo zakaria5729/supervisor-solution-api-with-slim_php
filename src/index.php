@@ -195,89 +195,10 @@ $app->post('/requested_group_list', function(Request $request, Response $respons
 
         if($requested_group_list != null) {
             $response_data['error'] = false;
-            $response_data['requested_group_list'] = $requested_group_list;
+            $response_data['accepted_group_list'] = $requested_group_list;
         } else {
             $response_data['error'] = true;
-            $response_data['requested_group_list'] = 'No data found';
-        }
-
-        $response_code = 200;
-        $response->write(json_encode($response_data));
-
-    } else {
-        $response_code = 422;
-    }
-
-    return $response
-                ->withHeader('Content-type', 'application/json')
-                ->withStatus($response_code);
-});
-
-$app->post('/group_accept_or_decline', function(Request $request, Response $response) {
-    if(!haveEmptyParameters($request, $response, array('supervisor_email', 'group_email', 'accept_or_decline'))) {
-        $request_data = $request->getParams();
-        $supervisor_email = $request_data['supervisor_email'];
-        $group_email = $request_data['group_email'];
-        $accept_or_decline = $request_data['accept_or_decline'];
-
-        //Removing HTML from a string and special characters
-        $supervisor_email = htmlspecialchars(strip_tags($supervisor_email));
-        $group_email = htmlspecialchars(strip_tags($group_email));
-        $accept_or_decline = htmlspecialchars(strip_tags($accept_or_decline));
-
-        $db = new DbOperations();
-        $response_data = array();
-
-        $result = $db->manageRequestedGroupList($supervisor_email, $group_email, $accept_or_decline);
-
-        if($result == REQUEST_ACCEPTED) {
-            $response_data['error'] = false;
-            $response_data['message'] = 'Request accepted';
-
-        } else if($result == REQUEST_ACCEPTED_FAILED) {
-            $response_data['error'] = true;
-            $response_data['message'] = 'Request accepted failed';
-
-        } else if($result == REQUEST_DECLINED_SUCCESSFULLY) {
-            $response_data['error'] = false;
-            $response_data['message'] = 'Request declined successfully';
-
-        } if($result == REQUEST_DECLINED_FAILED) {
-            $response_data['error'] = true;
-            $response_data['message'] = 'Request declined failed';
-        }
-
-        $response_code = 200;
-        $response->write(json_encode($response_data));
-
-    } else {
-        $response_code = 422;
-    }
-
-    return $response
-                ->withHeader('Content-type', 'application/json')
-                ->withStatus($response_code);
-});
-
-$app->post('/group_list_status', function(Request $request, Response $response) {
-    if(!haveEmptyParameters($request, $response, array('group_email'))) {
-        $request_data = $request->getParams();
-        $group_email = $request_data['group_email'];
-
-        //Removing HTML from a string and special characters
-        $group_email = htmlspecialchars(strip_tags($group_email));
-
-        $db = new DbOperations();
-        $response_data = array();
-
-        $group_list_status = $db->studentGroupListStatus($group_email);
-
-        if($group_list_status != null) {
-            $response_data['error'] = false;
-            $response_data['group_list_status'] = $group_list_status;
-        } else {
-            $response_data['error'] = true;
-            $response_data['group_list_status'] = 'No data found';
+            $response_data['accepted_group_list'] = 'No data found';
         }
 
         $response_code = 200;
@@ -327,7 +248,7 @@ $app->post('/group_list_status', function(Request $request, Response $response) 
 
         } else if($result == STATUS_NOT_UPDATED) {
             $response_data['error'] = true;
-            $response_data['message'] = 'Please check your inbox and verify your email first';
+            $response_data['message'] = 'Please, check your inbox and verify your email first';
 
         } else if($result == USER_NOT_FOUND) {
             $response_data['error'] = true;
@@ -617,15 +538,10 @@ $app->get('/users', function(Request $request, Response $response) {
 $app->get('/topic_list', function(Request $request, Response $response) {
     $db = new DbOperations();
     $topics = $db->getTopicList();
-    $response_data = array();
 
-    if($topics != null) {
-        $response_data['error'] = false;
-        $response_data['topics'] = $topics;
-    } else {
-        $response_data['error'] = true;
-        $response_data['topics'] = 'No data found';
-    }
+    $response_data = array();
+    $response_data['error'] = false;
+    $response_data['topics'] = $topics;
 
     $response->write(json_encode($response_data, JSON_PRETTY_PRINT));
     return $response
@@ -637,15 +553,10 @@ $app->get('/topic_list', function(Request $request, Response $response) {
 $app->get('/supervisor_list', function(Request $request, Response $response) {
     $db = new DbOperations();
     $supervisors = $db->getSupervisorList();
-    $response_data = array();
 
-    if($supervisors != null) {
-        $response_data['error'] = false;
-        $response_data['supervisors'] = $supervisors;
-    } else {
-        $response_data['error'] = true;
-        $response_data['supervisors'] = 'No data found';
-    }
+    $response_data = array();
+    $response_data['error'] = false;
+    $response_data['supervisors'] = $supervisors;
 
     $response->write(json_encode($response_data, JSON_PRETTY_PRINT));
     return $response

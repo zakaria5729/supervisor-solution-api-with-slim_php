@@ -7,7 +7,8 @@
 
     define('USER_CREATED', 101);
     define('USER_EXISTS', 102);
-    define('USER_FAILURE', 103);
+    define('USER_GROUP_EXISTS', 103);
+    define('USER_FAILURE', 104);
 
     define('USER_AUTHENTICATED', 201);
     define('USER_NOT_FOUND', 202);
@@ -31,5 +32,19 @@
     define('VERIFICATION_CODE_WRONG', 603);
 
     define('TOKEN_DO_NOT_MATCH', 701);
+
+    define('ALREADY_REGISTERED', 801);
+    define('REGISTRATION_SUCCESSFUL', 802);
+    define('STUDENT_LIST_INSERTION_FAILED', 803);
+    define('SUPERVISOR_LIST_INSERTION_FAILED', 804);
+    define('TITLE_DEFENSE_ROW_INSERTION_FAILED', 805);
+
+    define('SUPER_ADDED_FAILED', 901);
+    define('SUPER_ADDED_SUCCESSFUL', 902);
+
+    define('REQUEST_ACCEPTED', 1001);
+    define('REQUEST_ACCEPTED_FAILED', 1002);
+    define('REQUEST_DECLINED_SUCCESSFULLY', 1003);
+    define('REQUEST_DECLINED_FAILED', 1004);
 
 ?>

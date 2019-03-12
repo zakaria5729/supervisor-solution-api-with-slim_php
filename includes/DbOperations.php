@@ -4,9 +4,11 @@ class DbOperations {
     private $conn;
     private $table_users = "our_supervisor.users";
     private $table_students = "our_supervisor.students";
+    private $table_supervisors = "our_supervisor.supervisors";
     private $table_topic_list = "our_supervisor.topic_list";
     private $table_supervisor_list = "our_supervisor.supervisor_list";
-    private $table_titlle_defense = "our_supervisor.titlle_defense";
+    private $table_title_defense = "our_supervisor.title_defense";
+    private $table_super = "our_supervisor.super";
 
     function __construct() {
         require_once dirname(__FILE__) . '/DbConnection.php';
@@ -15,21 +17,26 @@ class DbOperations {
     }
 
     public function createAccount($name, $email, $password, $user_role, $verification_code) {
-        if(!$this->isEmailExistsWtihUserRole($email, $user_role)) {
-            $statement = $this->conn->prepare("INSERT INTO ".$this->table_users."(name, email, password, user_role, verification_code) VALUES(?, ?, ?, ?, ?)");
-            $statement->bind_param("ssssi", $name, $email, $password, $user_role, $verification_code);
+        if(!$this->isGroupExistsWithEmail($email)) {
+            if(!$this->isEmailExistsWtihUserRole($email, $user_role)) {
 
-            if($statement->execute()) {
-                if (send_verification_code_to_email($email, $verification_code)) {
-                    return USER_CREATED;
+                $statement = $this->conn->prepare("INSERT INTO ".$this->table_users."(name, email, password, user_role, verification_code) VALUES(?, ?, ?, ?, ?)");
+                $statement->bind_param("ssssi", $name, $email, $password, $user_role, $verification_code);
+
+                if($statement->execute()) {
+                    if (send_verification_code_to_email($email, $verification_code)) {
+                        return USER_CREATED;
+                    } else {
+                        return VERIFICATION_CODE_SEND_FAILED;
+                    }
                 } else {
-                    return VERIFICATION_CODE_SEND_FAILED;
+                    return USER_FAILURE;
                 }
             } else {
-                return USER_FAILURE;
+                return USER_EXISTS;
             }
         } else {
-            return USER_EXISTS;
+            return USER_GROUP_EXISTS;
         }
     }
 
@@ -48,45 +55,6 @@ class DbOperations {
             }
         } else {
             return USER_NOT_FOUND;
-        }
-    }
-
-    public function titleDefenseRegistration($project_internship, $project_internship_type, $project_internship_title, $area_of_interest, $day_evening, $user_list, $supervisor_list) {
-        $users = json_decode($user_list);
-        print_r($users);
-
-
-
-
-
-        // if(!$this->isGroupExistsWithEmail($email)) {
-        //     $group_id = $user_list[0];
-
-        //     $statement = $this->conn->prepare("INSERT INTO ".$this->table_titlle_defense."(group_id, supervisor_id, project_internship, project_internship_type, project_internship_title, area_of_interest, day_evening) VALUES(?, ?, ?, ?, ?, ?, ?)");
-        //     $statement->bind_param("iisssss", $group_id, $supervisor_id, $project_internship, $project_internship_type, $project_internship_title, $area_of_interest, $day_evening);
-
-        //     if($statement->execute()) {
-
-        //     } else {
-
-        //     }
-        // }
-    }
-
-    private function isGroupExistsWithEmail($email) {
-        $statement = $this->conn->prepare("SELECT id FROM ".$this->table_students." WHERE email = ?");
-        $statement->bind_param("s", $email);
-        $statement->execute();
-        $statement->store_result();
-
-        $num_of_rows = $statement->num_rows;
-        $statement->free_result();
-        $statement->close();
-
-        if($num_of_rows > 0) {
-            return true;
-        } else {
-            return false;
         }
     }
 
@@ -116,20 +84,80 @@ class DbOperations {
                     return USER_FAILURE;
                 }
             }
+
         } else {
-            $hash_token = password_hash($token, PASSWORD_DEFAULT);
-            $token_status = 1;
-            $password_status = 1;
-
-            $statement = $this->conn->prepare("INSERT INTO ".$this->table_users."(name, email, user_role, password_status, token, token_status) VALUES(?, ?, ?, ?, ?, ?)");
-            $statement->bind_param("sssisi", $name, $email, $user_role, $password_status, $hash_token, $token_status);
-
-            if($statement->execute()) {
-                return USER_AUTHENTICATED;
+            if(!$this->isGroupExistsWithEmail($email)) {
+                $hash_token = password_hash($token, PASSWORD_DEFAULT);
+                $token_status = 1;
+                $password_status = 1;
+    
+                $statement = $this->conn->prepare("INSERT INTO ".$this->table_users."(name, email, user_role, password_status, token, token_status) VALUES(?, ?, ?, ?, ?, ?)");
+                $statement->bind_param("sssisi", $name, $email, $user_role, $password_status, $hash_token, $token_status);
+    
+                if($statement->execute()) {
+                    return USER_AUTHENTICATED;
+                } else {
+                    return USER_FAILURE;
+                }
             } else {
-                return USER_FAILURE;
+                return USER_GROUP_EXISTS;
             }
         }
+    }
+
+    public function titleDefenseRegistration($project_internship, $project_internship_type, $project_internship_title, $area_of_interest, $day_evening, $student_list, $supervisor_list) {
+        $email = $student_list[0]['email'];
+
+        if(!$this->isGroupExistsWithEmail($email)) {
+            $group_supervisor_email = $student_list[0]['email'];
+            $group_email = $student_list[0]['email'];
+
+            $statement_defense = $this->conn->prepare("INSERT INTO ".$this->table_title_defense."(group_email, project_internship, project_internship_type, project_internship_title, area_of_interest, group_supervisor_email, day_evening) VALUES(?, ?, ?, ?, ?, ?, ?)");
+            $statement_defense->bind_param("sssssss", $group_email, $project_internship, $project_internship_type, $project_internship_title, $area_of_interest, $group_supervisor_email, $day_evening);
+
+            if($statement_defense->execute()) { 
+                foreach($student_list as $student) {
+                    $statement_student = $this->conn->prepare("INSERT INTO ".$this->table_students."(group_email, student_id, name, email, phone) VALUES(?, ?, ?, ?, ?)");
+                    $statement_student->bind_param("sisss", $group_email, $student['student_id'], $student['name'], $student['email'], $student['phone']);
+                    $result_student = $statement_student->execute();
+
+                    if(!$result_student) {
+                        return STUDENT_LIST_INSERTION_FAILED;
+                    }
+                }
+
+                foreach($supervisor_list as $supervisor) {
+                    $statement_supervisor = $this->conn->prepare("INSERT INTO ".$this->table_supervisors."(group_supervisor_email, supervisor_email) VALUES(?, ?)");
+                    $statement_supervisor->bind_param("ss", $student_list[0]['email'], $supervisor['supervisor_email']);
+                    $result_supervisor = $statement_supervisor->execute();
+
+                    if(!$result_supervisor) {
+                        return SUPERVISOR_LIST_INSERTION_FAILED;
+                    }
+                }
+
+                return REGISTRATION_SUCCESSFUL;
+
+            } else {
+                return TITLE_DEFENSE_ROW_INSERTION_FAILED;
+            }
+        } else {
+            return ALREADY_REGISTERED;
+        }
+    }
+
+    public function setSuper($student_list, $supervisor_list) {
+        foreach($supervisor_list as $supervisor) {
+            $statement = $this->conn->prepare("INSERT INTO ".$this->table_super."(group_email, supervisor_email) VALUES(?, ?)");
+            $statement->bind_param("ss", $student_list[0]['email'], $supervisor['supervisor_email']);
+            $result = $statement->execute();
+
+            if(!$result) {
+                return SUPER_ADDED_FAILED;
+            }
+        }
+
+        return SUPER_ADDED_SUCCESSFUL;
     }
 
     public function updateUser($name, $email) {
@@ -254,7 +282,7 @@ class DbOperations {
     }
 
     public function getTopicList() {
-        $statement = $this->conn->prepare("SELECT id, topic_name, image_path, supervisor_initial, description_one, description_two, video_path FROM ".$this->table_topic_list." ORDER BY id DESC");
+        $statement = $this->conn->prepare("SELECT id, topic_name, image_path, supervisor_initial, description_one, description_two, video_path FROM ".$this->table_topic_list);
         $statement->execute();
         $statement->bind_result($id, $topic_name, $image_path, $supervisor_initial, $description_one, $description_two, $video_path);
         
@@ -302,6 +330,137 @@ class DbOperations {
 
         $statement->close();
         return $all_supervisor;
+    }
+
+    public function getAcceptedGroupList($supervisor_email) {
+        $is_accepted = 1;
+
+        $statement_group_email = $this->conn->prepare("SELECT group_email FROM ".$this->table_super." WHERE supervisor_email = ? AND is_accepted = ?");
+        $statement_group_email->bind_param("si", $supervisor_email, $is_accepted);
+        $statement_group_email->execute();
+        $statement_group_email->bind_result($group_email);
+
+        $all_group_email = array();
+        while($statement_group_email->fetch()) {
+            $all_group_email[] = $group_email;
+        }
+    
+        $statement_group_email->close();
+        $all_accepted_list = array();
+
+        foreach($all_group_email as $email) {
+            $statement = $this->conn->prepare("SELECT student_id, name, email, phone FROM ".$this->table_students." WHERE group_email = ?");
+            $statement->bind_param("s", $email);
+            $statement->execute();
+            $statement->bind_result($student_id, $name, $email, $phone);
+            
+            $all_student = array();
+            while($statement->fetch()) {
+                $student = array();
+                $student['student_id'] = $student_id;
+                $student['name'] = $name;
+                $student['email'] = $email;
+                $student['phone'] = $phone;
+
+                array_push($all_student, $student);
+            }
+
+            array_push($all_accepted_list, $all_student);
+            $statement->close();
+        }
+        
+        return $all_accepted_list;
+    }
+
+    public function getRequestedGroupList($supervisor_email) {
+        $is_accepted = 0;
+
+        $statement_group_email = $this->conn->prepare("SELECT group_email FROM ".$this->table_super." WHERE supervisor_email = ? AND is_accepted = ?");
+        $statement_group_email->bind_param("si", $supervisor_email, $is_accepted);
+        $statement_group_email->execute();
+        $statement_group_email->bind_result($group_email);
+
+        $all_group_email = array();
+        while($statement_group_email->fetch()) {
+            $all_group_email[] = $group_email;
+        }
+    
+        $statement_group_email->close();
+        $all_requested_list = array();
+
+        foreach($all_group_email as $email) {
+            $statement = $this->conn->prepare("SELECT student_id, name, email, phone FROM ".$this->table_students." WHERE group_email = ?");
+            $statement->bind_param("s", $email);
+            $statement->execute();
+            $statement->bind_result($student_id, $name, $email, $phone);
+            
+            $all_student = array();
+            while($statement->fetch()) {
+                $student = array();
+                $student['student_id'] = $student_id;
+                $student['name'] = $name;
+                $student['email'] = $email;
+                $student['phone'] = $phone;
+
+                array_push($all_student, $student);
+            }
+
+            array_push($all_requested_list, $all_student);
+            $statement->close();
+        }
+        
+        return $all_requested_list;
+    }
+
+    public function manageRequestedGroupList($supervisor_email, $group_email, $accept_or_decline) {
+        if($accept_or_decline == 1) {
+            $statement_accept = $this->conn->prepare("UPDATE ".$this->table_super." SET is_accepted = ? WHERE supervisor_email = ? AND group_email = ?");
+            $statement_accept->bind_param("iss", $accept_or_decline, $supervisor_email, $group_email);
+            
+            if($statement_accept->execute()) {
+                return REQUEST_ACCEPTED;
+            } else {
+                return REQUEST_ACCEPTED_FAILED;
+            }
+
+        } else if($accept_or_decline == -1) {
+            $group_supervisor_email = $group_email;
+
+            $statement_super = $this->conn->prepare("DELETE FROM ".$this->table_super." WHERE group_email = ? AND supervisor_email = ?");
+            $statement_super->bind_param("ss", $group_email, $supervisor_email);
+
+            if($statement_super->execute()) {
+                $statement = $this->conn->prepare("DELETE FROM ".$this->table_supervisors." WHERE group_supervisor_email = ? AND supervisor_email = ?");
+                $statement->bind_param("ss", $group_supervisor_email, $supervisor_email);
+
+                if($statement->execute()) {
+                    return REQUEST_DECLINED_SUCCESSFULLY;
+                } else {
+                    return REQUEST_DECLINED_FAILED;
+                }
+            } else {
+                return REQUEST_DECLINED_FAILED;
+            }
+        }
+    }
+
+    public function studentGroupListStatus($group_email) {
+        $statement = $this->conn->prepare("SELECT supervisor_email, is_accepted FROM ".$this->table_super." WHERE group_email = ?");
+        $statement->bind_param("s", $group_email);
+        $statement->execute();
+        $statement->bind_result($supervisor_email, $is_accepted);
+
+        $all_list = array();
+        while($statement->fetch()) {
+            $list = array();
+            $list['supervisor_email'] = $supervisor_email;
+            $list['is_accepted'] = $is_accepted;
+
+            array_push($all_list, $list);
+        }
+        
+        $statement->close();
+        return $all_list;
     }
 
     public function getUserByEmial($email) {
@@ -407,6 +566,23 @@ class DbOperations {
     private function isUserExists($id) {
         $statement = $this->conn->prepare("SELECT email FROM ".$this->table_users." WHERE id = ?");
         $statement->bind_param("i", $id);
+        $statement->execute();
+        $statement->store_result();
+
+        $num_of_rows = $statement->num_rows;
+        $statement->free_result();
+        $statement->close();
+
+        if($num_of_rows > 0) {
+            return true;
+        } else {
+            return false;
+        }
+    }
+
+    private function isGroupExistsWithEmail($email) {
+        $statement = $this->conn->prepare("SELECT id FROM ".$this->table_students." WHERE email = ?");
+        $statement->bind_param("s", $email);
         $statement->execute();
         $statement->store_result();
 
