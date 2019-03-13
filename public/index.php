@@ -14,6 +14,13 @@ $app = new \Slim\App([
     ]
 ]);
 
+$app->add(new Tuupola\Middleware\HttpBasicAuthentication([
+    "secure"=>false, //cz our api works on http
+    "users" => [
+        "diu_supervisor_solution" => 'admin@diu_supervisor_solution'
+    ]
+]));
+
  //Create user
  $app->post('/create_user', function(Request $request, Response $response) {     
         if(!haveEmptyParameters($request, $response, array('name', 'email', 'password'))) {
