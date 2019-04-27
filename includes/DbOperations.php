@@ -19,7 +19,6 @@ class DbOperations {
     public function createAccount($name, $email, $password, $user_role, $verification_code) {
         if(!$this->isGroupExistsWithEmail($email)) {
             if(!$this->isEmailExistsWtihUserRole($email, $user_role)) {
-
                 $statement = $this->conn->prepare("INSERT INTO ".$this->table_users."(name, email, password, user_role, verification_code) VALUES(?, ?, ?, ?, ?)");
                 $statement->bind_param("ssssi", $name, $email, $password, $user_role, $verification_code);
 
@@ -60,16 +59,13 @@ class DbOperations {
 
     public function userSignInWithGoogle($name, $email, $token, $user_role) {
         if($this->isEmailExistsWtihUserRole($email, $user_role)) {
-
             if($this->isTokenStatusUpadated($email)) {
                 $hashed_token = $this->getTokenByEmial($email);
-
                 if(password_verify($token, $hashed_token)) {
                     return USER_AUTHENTICATED;
                 } else {
                     return TOKEN_DO_NOT_MATCH;
                 }
-
             } else {
                 $hash_token = password_hash($token, PASSWORD_DEFAULT);
                 $token_status = 1;
@@ -84,7 +80,6 @@ class DbOperations {
                     return USER_FAILURE;
                 }
             }
-
         } else {
             if(!$this->isGroupExistsWithEmail($email)) {
                 $hash_token = password_hash($token, PASSWORD_DEFAULT);
@@ -118,7 +113,7 @@ class DbOperations {
             if($statement_defense->execute()) { 
                 foreach($student_list as $student) {
                     $statement_student = $this->conn->prepare("INSERT INTO ".$this->table_students."(group_email, student_id, name, email, phone) VALUES(?, ?, ?, ?, ?)");
-                    $statement_student->bind_param("sisss", $group_email, $student['student_id'], $student['name'], $student['email'], $student['phone']);
+                    $statement_student->bind_param("sssss", $group_email, $student['student_id'], $student['name'], $student['email'], $student['phone']);
                     $result_student = $statement_student->execute();
 
                     if(!$result_student) {
@@ -145,6 +140,25 @@ class DbOperations {
             return ALREADY_REGISTERED;
         }
     }
+
+    // private function isSupervisorsExists($supervisor_list) {
+    //     $statement = $this->conn->prepare("SELECT fcm_token FROM ".$this->table_users." WHERE email = ?");
+    //     $statement->bind_param("s", $email);
+    //     $statement->execute();
+    //     $statement->bind_result($fcm_token);
+    //     $statement->fetch();
+    //     $statement->close();
+
+    //     foreach($supervisor_list as $supervisor) {
+    //         $statement = $this->conn->prepare("SELECT  ".$this->table_super."(group_email, supervisor_email) VALUES(?, ?)");
+    //         $statement->bind_param("ss", $student_list[0]['email'], $supervisor['supervisor_email']);
+    //         $result = $statement->execute();
+
+    //         if(!$result) {
+    //             return SUPER_ADDED_FAILED;
+    //         }
+    //     }
+    // }
 
     public function setSuper($student_list, $supervisor_list) {
         foreach($supervisor_list as $supervisor) {
@@ -175,7 +189,7 @@ class DbOperations {
         }
     }
 
-    public function updatePassword($email, $current_password, $new_password) {
+    public function changePassword($email, $current_password, $new_password) {
         $hashed_password = $this->getPasswordByEmial($email);
 
         if(password_verify($current_password, $hashed_password)) {

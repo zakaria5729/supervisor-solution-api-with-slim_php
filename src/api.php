@@ -75,7 +75,6 @@ $app->add(new Tuupola\Middleware\HttpBasicAuthentication([
             $message['message'] = 'Your group leder already completed yours registration. Contact with him';
             $response_code = 200;
          }
-
          $response->write(json_encode($message));
 
      } else {
@@ -87,8 +86,8 @@ $app->add(new Tuupola\Middleware\HttpBasicAuthentication([
                 ->withStatus($response_code);
  });
 
-  //User login
-  $app->post('/login_or_signin', function(Request $request, Response $response) {
+//User login
+$app->post('/login_or_signin', function(Request $request, Response $response) {
     if(!haveEmptyParameters($request, $response, array('name', 'email', 'password', 'token', 'user_role', 'login_type'))) {
        $request_data = $request->getParams();
        
@@ -98,7 +97,6 @@ $app->add(new Tuupola\Middleware\HttpBasicAuthentication([
        $token = $request_data['token'];
        $user_role = $request_data['user_role'];
        $login_type = $request_data['login_type'];
-
        
        $db = new DbOperations();
        $response_data = array();
